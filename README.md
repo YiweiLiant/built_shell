@@ -122,10 +122,3 @@ NOTE: It is very easy to write a broken implementation of pipes which LOOKS like
       it works on  short input (< 65536 bytes), but deadlocks on longer
       input.   Your implemenation must work correctly when sending large
       amounts of data through the pipe for full credit.
-
-      Using fcntl with F_SETPIPE_SZ to adjust the kernel buffer size to
-      "larger than you think we will test with" is NOT a valid approach.
-      If I see you trying to do this, you will get no credit for part 4.
-
-
-
