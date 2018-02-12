@@ -1,0 +1,458 @@
+There are an input.txt file which contains "/bin/ls"
+There are three executable file in the folder are used for testing
+testSeg : creat a segmatation fault
+testArg : print all the argument
+testRedir : output the stdin and " input success" to stdout and stdcerr an fake err
+the code of those three are shown below:
+
+testSeg:
+int main(int argc,char ** argv){
+  char * foo = "Hello";
+  foo[0] = 'f';
+}
+
+testArg:
+int main(int argc,char ** argv){
+  for(int i = 0 ; i < argc; i++){
+    std::cout<<argv[i]<<"\n";
+  }
+}
+
+testRedir:
+int main(int argc,char ** argv){
+  std::string input;
+  std::string str;
+  while(getline(std::cin,str)){
+    input = input + str;
+  }
+  std::cout<<input<<" input success\n";
+  std::cerr<<"this is a fake err\n";
+}
+
+*******************************step1*******************************
+
+******************step1.1
+
+run ./myShell you will see
+myShell: /home/netid/ece551/mp_minipriject $
+
+*a) /bin/ls
+you will see:
+    (all the file in the current folder)
+    Program exited with status 0
+because this command successfully run
+
+*b) /bin/cat foo(something that is not exist)
+you will see:
+    /bin/cat: foo : No such file or directory
+    Program exited with status 1
+because this command try to run and exit
+however, since there is no foo it would return with some status
+
+*c) /bin/ls foo(something that is not exist)
+you will see:
+    /bin/ls:cannot access 'foo' : No such file or directory
+    Program exited with status 2
+because the same reason as b) but have different exit status
+
+*d)./testSeg
+you will see:
+    Program was killed by signal 11
+bacause testSeg cause segmantation fault(signal 11)
+
+*e) exit
+you will see myShell closed
+
+******************step1.2
+
+run ./myShell < input.txt  (which contains /bin/ls)
+you will see
+    (all the files in the current folder)
+    Program exited with status 0
+and the shell close automatically
+because input.txt contains an EOF which cause the shell exit
+
+***************************step2**************************
+
+****************step2.1.
+run ./myShell
+
+*a) ls
+you will see
+    (all the file in the current folder)
+     Program exited with status 0
+because ls was found in env PATH and executed successfully
+
+*b) date
+you will see
+    (date)
+    Program exited with status 0
+because the same reason in step2.1.a
+
+*c)See step2.2.a
+
+*d)foo(something is not exist in env PATH) something(followed by some arguments)
+you will see:
+    Command foo not found
+because the foo have no '/' in it and cannot be found in env PATH
+
+*e)./foo(something is not exist in current file)
+you will see:
+    Command ./foo not found
+because ./foo is not found
+
+*f) /bin/foo(something is not exist)
+you will see :
+    Command /bin/foo not found
+because the same reason in step2.1.e
+
+*g)./README(something exist but not executable)
+you will see:
+    Program exited with status 255
+because myShell try to run it but fail so it exited with some status
+
+****************step2.2
+
+*a) ./testArg
+you will see
+    ./testArg
+    Program exited with status 0
+because the argument ./testArg have is itself
+
+*b)./testArg      a    b c \  d\ \ d  f\\    g \ h    (some space at the end)
+or ./testArg a b c \  d\ \ d f\\  g \ h(no space at the end)
+you will see:
+    ./testArg
+    a
+    b
+    c
+
+    d  d
+    f\ (a space here)
+    g
+     h
+    Program exited with status 0
+because arguments are separated by space while '\ 'is escaped spaces
+
+*c) ls ..
+you will see:
+    (all the files and folder in the up one level folder)
+    Program exited with status 0
+because this is how ls works
+
+******************************step3********************
+
+**********************step3.1
+
+*a)cd ..
+you will see
+    myShell:home/netid/ece551 $
+if you press enter the myShell will not change
+or if you try pwd
+you will see
+    home/netid/ece551 $
+because the current folder has been changed
+
+*b)ls
+you will see:
+    (all the files and folder in ece551)
+    Program exited with status 0
+this is because you are now in ece551
+
+*c) cd foo (something that is not exist in ece551)
+you will see:
+    foo:no such directory
+this is because foo is not exist
+
+*d) cd mp_miniproject
+you will see:
+    myShell: /home/netid/ece551/mp_miniproject $
+because we just get back to mp_miniproject
+
+**********************step3.2
+
+*a) set a z
+   echo $a
+you will see:
+    z
+    Program exited with status 0
+because the value of variable a is now z and $a means the value of a
+
+*b) set       b   $a..  y something      another \        blahblah   (space at the end)
+   echo $b
+you will see
+    z.. y something another   blahblah
+    Program exited with status 0
+because $a is z here b is set to be 'z..  y something      another \        blahblah'
+but command echo would only print it as 'z.. y something another   blahblah'
+we will test it further in step3.3.a
+
+*c)set $a good test
+  echo $z
+you will see:
+    good test
+    Program exited with status 0
+because $a is set to be z in step3.2.a
+
+*d)set foo@@ foo
+you will see:
+    invalid variable: onlt letters, underscores and numbers
+because foo@@ is not a valid variable name
+
+*e)echo $foo@@
+you will see:
+    variable foo have not been initialized
+    @@
+    Program exited with status 0
+because foo has not been set in step3.2.d an error was print
+and the "$foo" part was skiped so @@ was printed by echo
+
+*f)echo $PATH...$PATH
+you will see
+    (path env variable)...(path env variable)
+    Program exited with status 0
+because PATH is exist in env variable
+
+*g)echo $...$PWD
+you will see
+    no valid variable followed by $
+    ...(current path)
+    Program exited with status 0
+because the first $ is not followed by valid variable
+so an error is printed and that part was skiped
+and PWD is exist in env variables so it is printed
+
+*h)set c
+you will see nothing but we will use it in step3.3
+
+*i)set $foo bad
+you will see:
+    variable foo have not been initialized
+because it try to find the value of foo however it has not been set
+so that part was skip "set bad" was be run
+
+*j)set foo $bad
+  echo $foo
+you will see:
+
+    Program exited with status 0
+because bad was set to "" in 3.2.i echo $foo means "echo"
+which would print an empty line then exit
+
+*k)set d $a
+  echo $d
+you will see:
+    z
+    Program exited with status 0
+becaues $a is z as it set in step3.2.a so d is set to $a which is z
+
+*l)set xy$a abc
+  echo $xyz
+you will see:
+    abc
+    Program exited with status 0
+because the similar reason in step3.2.k
+
+
+*************************step3.3
+
+*a)
+ env
+you will see
+    (all the variable in env)
+ export b
+ env
+you will see
+    (all the varable in env)plus
+    "b=z..  y something      another \        blahblah"
+    Program exited with status 0  
+this is because the value of b(be set in 3.2.b) is been put into the environment
+
+*b)
+ export c
+ env
+you will see
+    (all the variable in env)plus
+    "c="
+    Program exited with status 0
+this is because the value of c(be set in 3.2.h) is empty but still been put into env
+
+*c)
+ ./myShell (this will open a child shell)
+ echo $b
+you will see the same output as 3.2.a because the value of b is
+put in env and can be use by other program
+ echo a
+you will see
+    variable bad have not been initialized
+
+    Program exited with status 0
+because a is set in the parent shell and cannot be used in chile shell
+the empty line is the output of echo empty input
+
+exit(exit the chile shell back to parent shell)
+
+*d)export foo(something is not been initialized)
+you will see
+    variable foo have not been initialized
+because foo has not been initialized
+
+*f)export foo bad bad bad
+you will see
+    invalid use of export : export var
+because in my shell export can only take one argument
+
+*g)export
+you will see
+    invalid use of export : export var
+because in my shell export can only take one argument   
+
+****************************step4********************
+*******************step4.1
+*a)echo string > in
+you will see
+    Program exited with status 0
+then do cat in
+you will see
+    string
+    Program exited with status 0
+because the output of echo has been put into file in
+
+*b)./testRedir<in>out2>err
+  ./testRedir    < in  >    out   2>    err   (space at end)
+  ./testRedir<in 2>err >out
+  ./testRedir>out <in 2>err
+  ./testRedir>out 2>err <in
+  ./testRedir2>err >out <in
+  ./testRedir2>err <in >out
+you will see
+    Program exited with status 0
+then do
+  cat out err
+you will see:
+    string input success
+    this is a fake err
+    Program exited with status 0
+because the stdin stdout and stderr has been redirect
+
+*c)rm our err
+  set a fun
+  ./testRedir <in >$a
+you will see:
+    this is a fake err
+    Program exited with status 0
+because the stderr has not been redirect
+then do:
+  cat fun
+you will see 
+    string input success
+    Program exited with status 0
+because the stdout has been redirect to $a which is fun
+
+*****************step 4.2  error handling
+*a)./testRedir foo<in
+the foo would be consider as argument so would have the same output
+as ./testRedir < in
+
+*b)./testRedir <in >out1>out2>out3
+same as ./testRedir <in >out 2>out3
+
+*c)./testRedir <in >outa>outb>outc>outd
+same as ./testRedir <in >outd
+
+*d)./testRedir < in 2222foo>out
+an error would be print "cannot get file from 222foo>out"
+then run ./testRedir < in
+
+*e)./testRedir < in >out fooooo>out 2>err
+an error would be printed "cannot get file from fooooo>out 2>err"
+then run ./testRedir <in >out
+
+*f)./testRedir <foo
+an error would be printed "cannot open foo"
+then run ./testRedir
+
+****************step4.3
+*a)echo string|./testRedir|./testRedir
+you will see:
+    Program exited with status 0  (echo exit)
+    this is a fake err            (first ./testRedir)
+    Program exited with status 0  (first ./testRedir exit)
+    string input success input success (output of second ./tsetRedir)
+    this is a fake err            (from second ./testRedir)      
+    Program exited with status 0  (second ./testRedir exit)
+(the order may change because those three command run at the same time)
+
+*b)./testRedir < in 2>err1| ./testRedir 2> err2|./testRedir 2>err3| ./testRedir >out 2>err4
+this will creat 5 files
+err1 err2 err3 err4 are same "this is a fake err"
+out would have
+string input success input success input success input success
+
+
+*c) the file myShell its self is bigger than 65536 bytes so I use this to test
+do
+  cat myShell | ./testRedir > crazy
+(you will see something like "this is a fake err and Progam exit" like 4.3.a )  
+then do emacs crazy
+you will see lots of @@@#@#@$#@$!@ in it
+and then do
+ls -l
+you can see that crazy and myShell has similar size
+  
+************************others***********************************
+*a) something ||   || other
+my shell would treat that as something|other
+
+*b)  |||||    or      (some space) or(just press enter)
+myShell would do nothing 
+
+*c) ls | ls |x(something not exsit)
+you will see
+    Command x not found
+it will also check every command to make sure it exist in pipes
+
+*d) ls | ls ..
+you will see
+    Program exited with status 0
+    (all the files in up level folder)
+    Program exited with status 0
+because the output of ls is redirect so it will not bu output to stdout
+ls .. will be run nomally
+
+*e)./testArg 42 blah something | ./testRedir | ./testRedir
+you will see
+    Program exited with status 0
+    this is a fake err
+    Program exited with status 0
+    ./testArg42blahsomething input success input success
+    this is a fake err
+    Program exited with status 0
+(the order may be change because of  the same reason in 4.3.a)
+this shows command in pipe can take arguments
+
+*f) in 3.2.b we 
+   set       b   $a..  y something      another \        blahblah   (space at the end)
+   (a is set to z in 3.2.a)
+if you do
+  ./testArg $b
+you will see
+    ./testArg
+    z..
+    y
+    something
+    another
+
+    blahblah
+    Program exit with status 0
+
+if you do
+  ./testArg $b| ./testRedir
+you will see
+    Program exit with status 0
+    /.testArgz..ysomethinganother blahblah input success
+    this is a fake err
+    Program exit with status 0
+(order may change
+
+because $b contains ' ' it would be treat as several part of arguments
